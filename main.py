@@ -24,13 +24,28 @@ async def health_app():
     app.router.add_get("/", health)
     return app
 
-async def run_web():
+async def run_web(bot: Bot, dp: Dispatcher):
     port = int(os.getenv("PORT", "10000"))
-    app = await health_app()
+
+    app = web.Application()
+
+    # webhook handler
+    SimpleRequestHandler(
+        dispatcher=dp,
+        bot=bot,
+    ).register(app, path=WEBHOOK_PATH)
+
+    setup_application(app, dp, bot=bot)
+
     runner = web.AppRunner(app)
     await runner.setup()
     site = web.TCPSite(runner, "0.0.0.0", port)
     await site.start()
+
+from aiogram.webhook.aiohttp_server import SimpleRequestHandler, setup_application
+
+WEBHOOK_PATH = "/webhook"
+WEBHOOK_URL = None  # установим в main()
 
 async def main():
     # 1) запускаем веб-порт
