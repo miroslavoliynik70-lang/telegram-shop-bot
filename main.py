@@ -404,7 +404,9 @@ async def checkout_pay(call: CallbackQuery, state: FSMContext, bot: Bot):
 
 
 # ---------------- ADMIN: accept/decline order ----------------
+
 @dp.callback_query(F.data.startswith("ord:"))
+async def admin_order_action(call: CallbackQuery, bot: Bot):
     if call.from_user.id not in ADMIN_IDS:
         await call.answer("No access", show_alert=True)
         return
@@ -421,7 +423,7 @@ async def checkout_pay(call: CallbackQuery, state: FSMContext, bot: Bot):
         await call.answer("Order not found", show_alert=True)
         return
 
-    _id, user_id, status, tg_username, tg_name, cname, phone, address, pay_method, total_cents = order
+    _id, user_id, status, tg_username, tg_name, cname, phone, address = order
 
     if status in ("accepted", "declined"):
         await call.answer("Уже обработано / Already processed", show_alert=True)
@@ -429,19 +431,16 @@ async def checkout_pay(call: CallbackQuery, state: FSMContext, bot: Bot):
 
     if action == "accept":
         db.set_order_status(order_id, "accepted")
-        # клиенту
         try:
             await bot.send_message(
                 user_id,
-                "✅ Ваш заказ подтверждён! Мы скоро свяжемся с вами.\n\n✅ Deine Bestellung wurde bestätigt! Wir melden uns bald."
+                "✅ Ваш заказ подтверждён! Мы скоро свяжемся с вами."
             )
         except Exception:
             pass
 
         await call.answer("✅ Принято", show_alert=True)
-        # обновим админ сообщение (уберём кнопки)
         try:
-            await call.message.edit_text(call.message.text.replace("Status: NEW", "Status: ACCEPTED"))
             await call.message.edit_reply_markup(reply_markup=None)
         except Exception:
             pass
@@ -449,20 +448,18 @@ async def checkout_pay(call: CallbackQuery, state: FSMContext, bot: Bot):
 
     if action == "decline":
         db.set_order_status(order_id, "declined")
-        # вернуть товар на склад
         db.restock_order(order_id)
-        # клиенту
+
         try:
             await bot.send_message(
                 user_id,
-                "❌ К сожалению, заказ отклонён. Напишите нам, чтобы уточнить детали.\n\n❌ Leider wurde die Bestellung abgelehnt. Schreib uns bitte für Details."
+                "❌ К сожалению, заказ отклонён. Напишите нам, чтобы уточнить детали."
             )
         except Exception:
             pass
 
-        await call.answer("❌ Отклонено (товар возвращён)", show_alert=True)
+        await call.answer("❌ Отклонено", show_alert=True)
         try:
-            await call.message.edit_text(call.message.text.replace("Status: NEW", "Status: DECLINED"))
             await call.message.edit_reply_markup(reply_markup=None)
         except Exception:
             pass
