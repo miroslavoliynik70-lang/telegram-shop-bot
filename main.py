@@ -13,40 +13,6 @@ import os
 from aiohttp import web
 import os
 
-async def health_app():
-    app = web.Application()
-
-    async def health(request):
-        return web.Response(text="ok")
-
-    app.router.add_get("/", health)
-    return app
-
-async def run_web(bot: Bot, dp: Dispatcher):
-    port = int(os.getenv("PORT", "10000"))
-
-    app = web.Application()
-
-    # webhook handler
-    SimpleRequestHandler(
-        dispatcher=dp,
-        bot=bot,
-    ).register(app, path=WEBHOOK_PATH)
-
-    setup_application(app, dp, bot=bot)
-
-    runner = web.AppRunner(app)
-    await runner.setup()
-    site = web.TCPSite(runner, "0.0.0.0", port)
-    await site.start()
-
-from aiogram.webhook.aiohttp_server import SimpleRequestHandler, setup_application
-
-WEBHOOK_PATH = "/webhook"
-WEBHOOK_URL = None  # установим в main()
-
-
-
 def currency_symbol(code: str) -> str:
     code = (code or "").upper()
     if code == "EUR":
