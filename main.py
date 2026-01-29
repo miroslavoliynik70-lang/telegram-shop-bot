@@ -11,6 +11,16 @@ from texts import TEXT
 import os
 from aiohttp import web
 
+def currency_symbol(code: str) -> str:
+    code = (code or "").upper()
+    if code == "EUR":
+        return "€"
+    if code == "USD":
+        return "$"
+    if code == "RUB":
+        return "₽"
+    return code
+
 async def health_server():
     app = web.Application()
 
