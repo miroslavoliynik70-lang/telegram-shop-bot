@@ -23,10 +23,6 @@ def currency_symbol(code: str) -> str:
         return "₽"
     return code
 
-def money(amount: int | float) -> str:
-    sym = currency_symbol(CURRENCY)
-    return f"{amount} {sym}"
-
 async def health_server():
     app = web.Application()
 
@@ -47,8 +43,7 @@ async def health_server():
 
 def money(cents: int) -> str:
     euros = cents / 100
-    return f"{euros:.2f} {CURRENCY}"
-
+    return f"{euros:.2f} {currency_symbol(CURRENCY)}"
 
 class Checkout(StatesGroup):
     name = State()
