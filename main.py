@@ -1245,7 +1245,7 @@ async def admin_prod_setprice(call: CallbackQuery, state: FSMContext, bot: Bot):
 
 @dp.message(ProductEdit.set_price)
 async def admin_prod_setprice_value(message: Message, state: FSMContext, bot: Bot):
-    if message.from_user.id != ADMIN_IDS:
+    if call.from_user.id not in ADMIN_IDS:
         return
     data = await state.get_data()
     pid = int(data.get("pid"))
