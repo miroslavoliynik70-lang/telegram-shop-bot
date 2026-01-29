@@ -8,6 +8,25 @@ from aiogram.fsm.context import FSMContext
 from config import BOT_TOKEN, ADMIN_ID, CURRENCY
 import db
 from texts import TEXT
+import os
+from aiohttp import web
+
+async def health_server():
+    app = web.Application()
+
+    async def handle(request):
+        return web.Response(text="OK")
+
+    app.router.add_get("/", handle)
+
+    runner = web.AppRunner(app)
+    await runner.setup()
+
+    port = int(os.environ.get("PORT", 10000))
+    site = web.TCPSite(runner, "0.0.0.0", port)
+    await site.start()
+
+    print(f"🌐 Health server running on port {port}")
 
 
 def money(cents: int) -> str:
