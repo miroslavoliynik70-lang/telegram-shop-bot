@@ -11,6 +11,38 @@ from texts import TEXT
 import os
 from aiohttp import web
 
+import os
+import asyncio
+from aiohttp import web
+
+async def health_app():
+    app = web.Application()
+
+    async def health(request):
+        return web.Response(text="ok")
+
+    app.router.add_get("/", health)
+    return app
+
+async def run_web():
+    port = int(os.getenv("PORT", "10000"))
+    app = await health_app()
+    runner = web.AppRunner(app)
+    await runner.setup()
+    site = web.TCPSite(runner, "0.0.0.0", port)
+    await site.start()
+
+async def main():
+    # 1) запускаем веб-порт
+    await run_web()
+
+    # 2) запускаем бота (твой polling)
+    # await dp.start_polling(bot)
+    # (оставь как у тебя, просто после run_web)
+
+if __name__ == "__main__":
+    asyncio.run(main())
+
 def currency_symbol(code: str) -> str:
     code = (code or "").upper()
     if code == "EUR":
