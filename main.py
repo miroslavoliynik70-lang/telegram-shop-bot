@@ -1110,11 +1110,12 @@ async def admin_cat_open(call: CallbackQuery, bot: Bot):
 
 @dp.callback_query(F.data == "prod:backcats")
 async def admin_back_cats(call: CallbackQuery, bot: Bot):
-    if call.from_user.id != ADMIN_IDS
-    :
+    if call.from_user.id not in ADMIN_IDS:
         await call.answer("No access", show_alert=True)
         return
+
     await call.answer()
+    # дальше твой код...
     fake = type("obj", (), {})()
     fake.from_user = call.from_user
     fake.chat = call.message.chat
