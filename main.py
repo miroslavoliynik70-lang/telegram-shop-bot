@@ -406,7 +406,7 @@ async def checkout_pay(call: CallbackQuery, state: FSMContext, bot: Bot):
 # ---------------- ADMIN: accept/decline order ----------------
 @dp.callback_query(F.data.startswith("ord:"))
 async def admin_order_action(call: CallbackQuery, bot: Bot):
-    if call.from_user.id not in ADMIN_IDS:
+if call.from_user.id not in ADMIN_IDS:
     await call.answer("No access", show_alert=True)
     return
 
