@@ -30,10 +30,6 @@ async def run_web():
 
     print("Web server started on port", port)
 
-import os
-import asyncio
-from aiohttp import web
-
 async def main():
     bot = Bot(BOT_TOKEN)
     dp = Dispatcher()
