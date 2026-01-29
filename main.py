@@ -30,15 +30,6 @@ async def run_web():
 
     print("Web server started on port", port)
 
-async def main():
-    bot = Bot(BOT_TOKEN)
-    dp = Dispatcher()
-
-    await run_web()
-
-    await bot.delete_webhook(drop_pending_updates=True)
-    await dp.start_polling(bot)
-
 async def health_app():
     app = web.Application()
 
