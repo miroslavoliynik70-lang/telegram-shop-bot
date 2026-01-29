@@ -48,12 +48,24 @@ WEBHOOK_PATH = "/webhook"
 WEBHOOK_URL = None  # установим в main()
 
 async def main():
-    # 1) запускаем веб-порт
-    await run_web()
+    bot = Bot(BOT_TOKEN)
+    dp = Dispatcher()
 
-    # 2) запускаем бота (твой polling)
-    # await dp.start_polling(bot)
-    # (оставь как у тебя, просто после run_web)
+    # запускаем web server (Render)
+    await run_web(bot, dp)
+
+    # ставим webhook на Render URL
+    base_url = os.getenv("RENDER_EXTERNAL_URL")
+    if not base_url:
+        base_url = "https://telegram-shop-bot-0urw.onrender.com"  # <-- сюда вставь СВОЙ Render URL
+
+    webhook_url = base_url.rstrip("/") + WEBHOOK_PATH
+    await bot.set_webhook(webhook_url)
+    print("Webhook set:", webhook_url)
+
+    # держим процесс живым
+    while True:
+        await asyncio.sleep(3600)
 
 if __name__ == "__main__":
     asyncio.run(main())
@@ -1417,9 +1429,7 @@ async def main():
     port = int(os.environ.get("PORT", 10000))
     site = web.TCPSite(runner, "0.0.0.0", port)
     await site.start()
-    # -------------------------------------------------------------
-
-    await dp.start_polling(bot)
+    # ------------------------------------------------------------
 
 
 if __name__ == "__main__":
