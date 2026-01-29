@@ -1,6 +1,5 @@
 import asyncio
 import os
-from typing import Iterable, Optional, Union
 
 from aiohttp import web
 from aiogram import Bot, Dispatcher, F
@@ -14,24 +13,7 @@ import db
 from texts import TEXT
 
 
-# ===================== helpers =====================
-
-def is_admin(user_id: int) -> bool:
-    """
-    ADMIN_IDS может быть:
-    - int (один админ)
-    - list/set/tuple (несколько админов)
-    """
-    if ADMIN_IDS is None:
-        return False
-    if isinstance(ADMIN_IDS, int):
-        return user_id == ADMIN_IDS
-    try:
-        return user_id in ADMIN_IDS
-    except TypeError:
-        return user_id == ADMIN_IDS
-
-
+# ----------------- MONEY -----------------
 def currency_symbol(code: str) -> str:
     code = (code or "").upper()
     if code == "EUR":
@@ -43,21 +25,13 @@ def currency_symbol(code: str) -> str:
     return code
 
 
-def money(cents: Union[int, float]) -> str:
-    """
-    В проекте цены в БД у тебя идут как "центы" (price_cents).
-    Поэтому всегда форматируем как euros = cents/100.
-    """
-    sym = currency_symbol(CURRENCY)
-    try:
-        euros = float(cents) / 100.0
-    except Exception:
-        return f"{cents} {sym}"
-    return f"{euros:.2f} {sym}"
+def money(cents: int | float) -> str:
+    # у тебя все цены в базе в cents
+    euros = float(cents) / 100
+    return f"{euros:.2f} {currency_symbol(CURRENCY)}"
 
 
-# ===================== states =====================
-
+# ----------------- STATES -----------------
 class Checkout(StatesGroup):
     name = State()
     phone = State()
@@ -78,21 +52,23 @@ class ProductEdit(StatesGroup):
     set_price = State()
 
 
-# ===================== app globals =====================
-
+# ----------------- GLOBALS -----------------
 dp = Dispatcher()
 USER_LANG = {}
 WAITING_CHANNEL = set()
 LAST_UI_MSG = {}  # user_id -> message_id
 
 
+# ----------------- LANG -----------------
 def lang(user_id: int) -> str:
     if user_id in USER_LANG:
         return USER_LANG[user_id]
+
     saved = db.get_setting(f"lang:{user_id}")
     if saved in ("ru", "de"):
         USER_LANG[user_id] = saved
         return saved
+
     return "ru"
 
 
@@ -151,8 +127,7 @@ def cart_total_qty(user_id: int) -> int:
     return sum(i[3] for i in items) if items else 0
 
 
-# ===================== START / LANG =====================
-
+# ---------------- START / LANG ----------------
 @dp.message(F.text.in_({"/start", "start"}))
 async def start(message: Message, bot: Bot):
     await send_ui(
@@ -160,11 +135,6 @@ async def start(message: Message, bot: Bot):
         TEXT["choose_lang"]["ru"] + "\n" + TEXT["choose_lang"]["de"],
         kb_lang()
     )
-
-
-@dp.message(F.text == "/whoami")
-async def whoami(message: Message):
-    await message.answer(f"Your ID: {message.from_user.id}")
 
 
 @dp.callback_query(F.data.startswith("lang:"))
@@ -183,8 +153,7 @@ async def menu_root(call: CallbackQuery, bot: Bot):
     await send_ui(bot, call.message.chat.id, call.from_user.id, TEXT["menu"][lg], kb_main(lg))
 
 
-# ===================== CATALOG =====================
-
+# ---------------- CATALOG ----------------
 @dp.callback_query(F.data == "menu:catalog")
 async def menu_catalog(call: CallbackQuery, bot: Bot):
     lg = lang(call.from_user.id)
@@ -212,8 +181,8 @@ async def cat_open(call: CallbackQuery, bot: Bot):
     products = db.list_products(category)
 
     kb = InlineKeyboardBuilder()
-    for pid, title, price_cents, stock in products:
-        kb.button(text=f"{title} — {money(price_cents)} (x{stock})", callback_data=f"p:{pid}")
+    for pid, title, price, stock in products:
+        kb.button(text=f"{title} — {money(price)} (x{stock})", callback_data=f"p:{pid}")
     kb.button(text=TEXT["back"][lg], callback_data="menu:catalog")
     kb.adjust(1)
 
@@ -231,7 +200,7 @@ async def product_open(call: CallbackQuery, bot: Bot):
         await call.answer("Not found", show_alert=True)
         return
 
-    _id, category, title, price_cents, stock, photo_file_id = p
+    _id, category, title, price, stock, photo_file_id = p
     total_qty = cart_total_qty(call.from_user.id)
 
     kb = InlineKeyboardBuilder()
@@ -243,14 +212,13 @@ async def product_open(call: CallbackQuery, bot: Bot):
     kb.button(text=TEXT["back"][lg], callback_data=f"cat:{category}")
     kb.adjust(2)
 
-    caption = f"{title}\n{money(price_cents)}\nStock: {stock}"
+    caption = f"{title}\n{money(price)}\nStock: {stock}"
 
     await call.answer()
     await send_ui(bot, call.message.chat.id, call.from_user.id, caption, kb.as_markup(), photo=photo_file_id)
 
 
-# ===================== CART =====================
-
+# ---------------- CART ----------------
 @dp.callback_query(F.data.startswith("add:"))
 async def add_to_cart(call: CallbackQuery, bot: Bot):
     try:
@@ -265,10 +233,7 @@ async def add_to_cart(call: CallbackQuery, bot: Bot):
 
         total_qty = cart_total_qty(call.from_user.id)
         lg = lang(call.from_user.id)
-        msg = (f"✅ Hinzugefügt: +{added}\n🧺 Im Warenkorb: {total_qty}"
-               if lg == "de"
-               else f"✅ Добавлено: +{added}\n🧺 В корзине: {total_qty}")
-
+        msg = f"✅ Добавлено: +{added}\n🧺 В корзине: {total_qty}" if lg == "ru" else f"✅ Hinzugefügt: +{added}\n🧺 Im Warenkorb: {total_qty}"
         await call.answer(msg, show_alert=True)
     except Exception:
         await call.answer("Ошибка / Error", show_alert=True)
@@ -303,16 +268,16 @@ async def cart_view(call: CallbackQuery, bot: Bot):
         await send_ui(bot, call.message.chat.id, call.from_user.id, TEXT["empty"][lg], kb_back(lg))
         return
 
-    total_cents = 0
+    total = 0
     lines = []
     kb = InlineKeyboardBuilder()
 
-    for pid, title, price_cents, qty in items:
-        total_cents += int(price_cents) * int(qty)
-        lines.append(f"• {title} × {qty} = {money(int(price_cents) * int(qty))}")
+    for pid, title, price, qty in items:
+        total += price * qty
+        lines.append(f"• {title} × {qty} = {money(price * qty)}")
         kb.button(text=f"➖ 1 {title}", callback_data=f"rm1:{pid}")
 
-    text = "\n".join(lines) + f"\n\nTotal: {money(total_cents)}"
+    text = "\n".join(lines) + f"\n\nTotal: {money(total)}"
 
     kb.button(text=TEXT["checkout"][lg], callback_data="checkout:start")
     kb.button(text=TEXT["clear_cart"][lg], callback_data="cart:clear")
@@ -323,8 +288,7 @@ async def cart_view(call: CallbackQuery, bot: Bot):
     await send_ui(bot, call.message.chat.id, call.from_user.id, text, kb.as_markup())
 
 
-# ===================== CHECKOUT =====================
-
+# ---------------- CHECKOUT ----------------
 @dp.callback_query(F.data == "checkout:start")
 async def checkout_start(call: CallbackQuery, state: FSMContext, bot: Bot):
     lg = lang(call.from_user.id)
@@ -381,35 +345,31 @@ async def checkout_pay(call: CallbackQuery, state: FSMContext, bot: Bot):
         call.from_user.id, name, phone, address, pay_method,
         tg_username=tg_username, tg_name=tg_name
     )
+
     if not created:
         await call.answer("Корзина пуста", show_alert=True)
         return
 
-    order_id, total_cents, items = created
+    order_id, total, items = created
 
     await call.answer("✅")
     await state.clear()
 
     await send_ui(
         bot, call.message.chat.id, call.from_user.id,
-        TEXT["order_done"][lg] + f"\nOrder #{order_id}\nTotal: {money(total_cents)}",
+        TEXT["order_done"][lg] + f"\nOrder #{order_id}\nTotal: {money(total)}",
         kb_main(lg)
     )
 
-    # уведомление админу (первому админу если список)
-    admin_target = ADMIN_IDS
-    if not isinstance(admin_target, int):
-        admin_target = list(admin_target)[0] if admin_target else None
-
-    if admin_target:
+    if ADMIN_IDS:
         tg_link = f"tg://user?id={call.from_user.id}"
+
         lines = [
             f"🧾 New order #{order_id}",
             f"Status: NEW",
             f"User ID: {call.from_user.id}",
             f"TG name: {tg_name if tg_name else '(empty)'}",
             f"Username: @{tg_username}" if tg_username else "Username: (none)",
-            f"Link: {tg_link}",
             "",
             f"Customer name: {name}",
             f"Phone: {phone}",
@@ -417,9 +377,9 @@ async def checkout_pay(call: CallbackQuery, state: FSMContext, bot: Bot):
             f"Pay: {pay_method}",
             ""
         ]
-        for pid, title, price_cents, qty in items:
-            lines.append(f"- {title} x{qty} = {money(int(price_cents) * int(qty))}")
-        lines.append(f"\nTOTAL: {money(total_cents)}")
+        for pid, title, price, qty in items:
+            lines.append(f"- {title} x{qty} = {money(price * qty)}")
+        lines.append(f"\nTOTAL: {money(total)}")
 
         kb = InlineKeyboardBuilder()
         kb.button(text="✅ Принять / Accept", callback_data=f"ord:accept:{order_id}")
@@ -428,14 +388,14 @@ async def checkout_pay(call: CallbackQuery, state: FSMContext, bot: Bot):
         kb.button(text="💬 Написать клиенту / Message", url=tg_link)
         kb.adjust(1)
 
-        await bot.send_message(int(admin_target), "\n".join(lines), reply_markup=kb.as_markup())
+        for admin_id in ADMIN_IDS:
+            await bot.send_message(admin_id, "\n".join(lines), reply_markup=kb.as_markup())
 
 
-# ===================== ADMIN: accept/decline =====================
-
+# ---------------- ADMIN accept/decline ----------------
 @dp.callback_query(F.data.startswith("ord:"))
 async def admin_order_action(call: CallbackQuery, bot: Bot):
-    if not is_admin(call.from_user.id):
+    if call.from_user.id not in ADMIN_IDS:
         await call.answer("No access", show_alert=True)
         return
 
@@ -451,7 +411,7 @@ async def admin_order_action(call: CallbackQuery, bot: Bot):
         await call.answer("Order not found", show_alert=True)
         return
 
-    _id, user_id, status, tg_username, tg_name, cname, phone, address = order
+    _id, user_id, status, tg_username, tg_name, cname, phone, address, pay_method, total_cents = order
 
     if status in ("accepted", "declined"):
         await call.answer("Уже обработано / Already processed", show_alert=True)
@@ -485,178 +445,7 @@ async def admin_order_action(call: CallbackQuery, bot: Bot):
         return
 
 
-# ===================== ADMIN MENU + WIZARD + STOCK =====================
-
-@dp.callback_query(F.data == "menu:admin")
-async def admin_entry(call: CallbackQuery, bot: Bot):
-    if not is_admin(call.from_user.id):
-        await call.answer("No access", show_alert=True)
-        return
-
-    kb = InlineKeyboardBuilder()
-    kb.button(text="📊 Список остатков", callback_data="admin:stock")
-    kb.button(text="➕ Добавить товар", callback_data="admin:wizard")
-    kb.adjust(1)
-
-    kb.button(text="🔗 Привязать канал (/setchannel)", callback_data="admin:setchannel")
-    kb.button(text="📢 Пост в канал (/post)", callback_data="admin:post")
-    kb.adjust(1)
-
-    kb.button(text="⬅️ Назад", callback_data="menu:root")
-    kb.adjust(1)
-
-    await call.answer()
-    await bot.send_message(call.message.chat.id, "⚙️ Админка:", reply_markup=kb.as_markup())
-
-
-@dp.callback_query(F.data == "admin:wizard")
-async def admin_wizard_start(call: CallbackQuery, state: FSMContext, bot: Bot):
-    if not is_admin(call.from_user.id):
-        await call.answer("No access", show_alert=True)
-        await state.clear()
-        return
-
-    await state.set_state(AddWizard.category)
-    await call.answer()
-    await send_ui(
-        bot, call.message.chat.id, call.from_user.id,
-        "Категория? (например: Hats / T-shirts)",
-        kb_cancel_to(lang(call.from_user.id), "menu:admin")
-    )
-
-
-@dp.message(AddWizard.category)
-async def admin_wizard_category(message: Message, state: FSMContext, bot: Bot):
-    if not is_admin(message.from_user.id):
-        return
-    await state.update_data(category=message.text.strip())
-    await state.set_state(AddWizard.title)
-    await send_ui(bot, message.chat.id, message.from_user.id, "Название товара?", kb_cancel_to(lang(message.from_user.id), "menu:admin"))
-
-
-@dp.message(AddWizard.title)
-async def admin_wizard_title(message: Message, state: FSMContext, bot: Bot):
-    if not is_admin(message.from_user.id):
-        return
-    await state.update_data(title=message.text.strip())
-    await state.set_state(AddWizard.price)
-    await send_ui(bot, message.chat.id, message.from_user.id, "Цена (например 19.99):", kb_cancel_to(lang(message.from_user.id), "menu:admin"))
-
-
-@dp.message(AddWizard.price)
-async def admin_wizard_price(message: Message, state: FSMContext, bot: Bot):
-    if not is_admin(message.from_user.id):
-        return
-    try:
-        price_cents = int(round(float(message.text.strip().replace(",", ".")) * 100))
-    except Exception:
-        await send_ui(bot, message.chat.id, message.from_user.id, "Не понял цену. Напиши например 19.99", kb_cancel_to(lang(message.from_user.id), "menu:admin"))
-        return
-    await state.update_data(price_cents=price_cents)
-    await state.set_state(AddWizard.stock)
-    await send_ui(bot, message.chat.id, message.from_user.id, "Остаток (число):", kb_cancel_to(lang(message.from_user.id), "menu:admin"))
-
-
-@dp.message(AddWizard.stock)
-async def admin_wizard_stock(message: Message, state: FSMContext, bot: Bot):
-    if not is_admin(message.from_user.id):
-        return
-    try:
-        stock = int(message.text.strip())
-    except Exception:
-        await send_ui(bot, message.chat.id, message.from_user.id, "Не понял. Напиши число (например 50).", kb_cancel_to(lang(message.from_user.id), "menu:admin"))
-        return
-    await state.update_data(stock=stock)
-    await state.set_state(AddWizard.photo)
-    await send_ui(bot, message.chat.id, message.from_user.id, "Теперь пришли ФОТО товара (или напиши 'skip'):", kb_cancel_to(lang(message.from_user.id), "menu:admin"))
-
-
-@dp.message(AddWizard.photo, F.text.lower() == "skip")
-async def admin_wizard_skip_photo(message: Message, state: FSMContext, bot: Bot):
-    if not is_admin(message.from_user.id):
-        return
-    data = await state.get_data()
-    db.add_product(data["category"], data["title"], data["price_cents"], data["stock"], photo_file_id=None)
-    await state.clear()
-    await send_ui(bot, message.chat.id, message.from_user.id, "✅ Товар добавлен (без фото).", kb_main(lang(message.from_user.id)))
-
-
-@dp.message(AddWizard.photo, F.photo)
-async def admin_wizard_photo(message: Message, state: FSMContext, bot: Bot):
-    if not is_admin(message.from_user.id):
-        return
-    data = await state.get_data()
-    photo_file_id = message.photo[-1].file_id
-    db.add_product(data["category"], data["title"], data["price_cents"], data["stock"], photo_file_id=photo_file_id)
-    await state.clear()
-    await send_ui(bot, message.chat.id, message.from_user.id, "✅ Товар добавлен с фото.", kb_main(lang(message.from_user.id)))
-
-
-@dp.callback_query(F.data == "admin:stock")
-async def admin_stock(call: CallbackQuery, bot: Bot):
-    if not is_admin(call.from_user.id):
-        await call.answer("No access", show_alert=True)
-        return
-
-    cats = db.list_categories()
-    lines = []
-    for c in cats:
-        items = db.list_products(c)
-        for pid, title, price_cents, stock in items:
-            lines.append(f"#{pid} | {c} | {title} | {money(price_cents)} | x{stock}")
-
-    text = "\n".join(lines) if lines else "Пока нет товаров."
-    await call.answer()
-    await send_ui(bot, call.message.chat.id, call.from_user.id, text, kb_back(lang(call.from_user.id), "menu:admin"))
-
-
-# ===================== CHANNEL =====================
-
-@dp.message(F.text == "/setchannel")
-async def setchannel_start(message: Message):
-    if not is_admin(message.from_user.id):
-        return
-    WAITING_CHANNEL.add(message.from_user.id)
-    await message.answer("Ок! Перешли любой пост из канала, чтобы я сохранил channel_id.")
-
-
-@dp.message(F.forward_from_chat)
-async def catch_forwarded_from_channel(message: Message):
-    if not is_admin(message.from_user.id):
-        return
-    if message.from_user.id not in WAITING_CHANNEL:
-        return
-    chat = message.forward_from_chat
-    db.set_setting("channel_id", str(chat.id))
-    WAITING_CHANNEL.discard(message.from_user.id)
-    await message.answer(f"✅ Канал сохранён! ID: {chat.id}")
-
-
-@dp.message(F.text == "/post")
-async def post_to_channel(message: Message, bot: Bot):
-    if not is_admin(message.from_user.id):
-        return
-    channel_id = db.get_setting("channel_id")
-    if not channel_id:
-        await message.answer("Сначала /setchannel и перешли пост из канала.")
-        return
-
-    text = (
-        "🇷🇺 *Магазин BÄRKA*\n"
-        "Заказ вещей прямо в Telegram — нажми кнопку ниже 👇\n\n"
-        "🇩🇪 *BÄRKA Shop*\n"
-        "Bestellung direkt in Telegram — klicke auf den Button unten 👇"
-    )
-
-    kb = InlineKeyboardBuilder()
-    kb.button(text="🛍 Открыть магазин | Shop öffnen", url="https://t.me/baerka_shop_bot")
-
-    await bot.send_message(int(channel_id), text, reply_markup=kb.as_markup(), parse_mode="Markdown")
-    await message.answer("✅ Пост отправлен в канал.")
-
-
-# ===================== background worker =====================
-
+# ---------------- BACKGROUND ----------------
 async def cart_expiry_worker(bot: Bot):
     while True:
         try:
@@ -665,9 +454,11 @@ async def cart_expiry_worker(bot: Bot):
                 db.release_cart(uid)
                 try:
                     lg = lang(uid)
-                    text = ("⏱ Warenkorb geleert (30 Min. inaktiv). Artikel sind wieder verfügbar."
-                            if lg == "de"
-                            else "⏱ Корзина очищена (30 минут без активности). Товары снова в наличии.")
+                    text = (
+                        "⏱ Корзина очищена (30 минут без активности). Товары снова в наличии."
+                        if lg == "ru"
+                        else "⏱ Warenkorb geleert (30 Min. inaktiv). Artikel sind wieder verfügbar."
+                    )
                     await bot.send_message(uid, text)
                 except Exception:
                     pass
@@ -676,44 +467,8 @@ async def cart_expiry_worker(bot: Bot):
         await asyncio.sleep(60)
 
 
-# ===================== admin router =====================
-
-@dp.callback_query(F.data.startswith("admin:"))
-async def admin_router(call: CallbackQuery, bot: Bot):
-    if not is_admin(call.from_user.id):
-        await call.answer("No access", show_alert=True)
-        return
-
-    data = call.data
-    await call.answer("OK")
-
-    if data == "admin:setchannel":
-        WAITING_CHANNEL.add(call.from_user.id)
-        await bot.send_message(call.message.chat.id, "Ок! Перешли пост из канала, чтобы сохранить канал.")
-        return
-
-    if data == "admin:post":
-        fake = type("obj", (), {})()
-        fake.from_user = call.from_user
-        fake.chat = call.message.chat
-        fake.text = "/post"
-        await post_to_channel(fake, bot)
-        return
-
-    if data == "admin:stock":
-        await admin_stock(call, bot)
-        return
-
-    if data == "admin:wizard":
-        # сюда не попадём (есть отдельный хэндлер), но пусть будет безопасно
-        return
-
-    await bot.send_message(call.message.chat.id, f"Unknown admin action: {data}")
-
-
-# ===================== Render keep-alive =====================
-
-async def start_health_server() -> web.AppRunner:
+# ---------------- WEB SERVER (Render) ----------------
+async def start_web_server():
     async def handle(request):
         return web.Response(text="OK")
 
@@ -727,24 +482,22 @@ async def start_health_server() -> web.AppRunner:
     site = web.TCPSite(runner, "0.0.0.0", port)
     await site.start()
 
-    print(f"🌐 Health server running on port {port}")
-    return runner
+    print(f"🌐 Web server running on port {port}")
 
 
-# ===================== MAIN =====================
-
+# ---------------- MAIN ----------------
 async def main():
     db.init_db()
 
     bot = Bot(BOT_TOKEN)
 
-    # фоновые задачи
+    # Render keep-alive server
+    await start_web_server()
+
+    # background tasks
     asyncio.create_task(cart_expiry_worker(bot))
 
-    # Render: держим порт
-    await start_health_server()
-
-    # важно для ошибки 409: выключаем webhook и включаем polling
+    # IMPORTANT: remove webhook to avoid 409 conflict
     await bot.delete_webhook(drop_pending_updates=True)
 
     await dp.start_polling(bot)
