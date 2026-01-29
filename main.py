@@ -9,11 +9,39 @@ from config import BOT_TOKEN, ADMIN_IDS, CURRENCY
 import db
 from texts import TEXT
 import os
+
 from aiohttp import web
+import os
+
+async def run_web():
+    app = web.Application()
+
+    async def health(request):
+        return web.Response(text="OK")
+
+    app.router.add_get("/", health)
+
+    runner = web.AppRunner(app)
+    await runner.setup()
+
+    port = int(os.environ.get("PORT", "10000"))
+    site = web.TCPSite(runner, "0.0.0.0", port)
+    await site.start()
+
+    print("Web server started on port", port)
 
 import os
 import asyncio
 from aiohttp import web
+
+async def main():
+    bot = Bot(BOT_TOKEN)
+    dp = Dispatcher()
+
+    await run_web()
+
+    await bot.delete_webhook(drop_pending_updates=True)
+    await dp.start_polling(bot)
 
 async def health_app():
     app = web.Application()
