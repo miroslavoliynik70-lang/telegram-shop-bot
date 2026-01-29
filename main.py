@@ -507,13 +507,15 @@ async def admin_entry(call: CallbackQuery, bot: Bot):
 @dp.callback_query(F.data == "admin:wizard")
 async def admin_wizard_start(call: CallbackQuery, state: FSMContext, bot: Bot):
     if call.from_user.id not in ADMIN_IDS:
-    await call.answer("No access", show_alert=True)
-    return await state.clear()
+        await call.answer("No access", show_alert=True)
+        await state.clear()
+        return
+
     await state.set_state(AddWizard.category)
     await call.answer()
     await send_ui(
         bot, call.message.chat.id, call.from_user.id,
-        "Категория? (например: Hats / T-Shirts)",
+        "Категория? (например: Hats / T-shirts)",
         kb_cancel_to(lang(call.from_user.id), "menu:admin")
     )
 
