@@ -5,7 +5,7 @@ from aiogram.utils.keyboard import InlineKeyboardBuilder
 from aiogram.fsm.state import StatesGroup, State
 from aiogram.fsm.context import FSMContext
 
-from config import BOT_TOKEN, ADMIN_IDS, CURRENCY
+from config import BOT_TOKEN, ADMIN_ID, CURRENCY
 import db
 from texts import TEXT
 import os
