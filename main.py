@@ -406,9 +406,9 @@ async def checkout_pay(call: CallbackQuery, state: FSMContext, bot: Bot):
 # ---------------- ADMIN: accept/decline order ----------------
 @dp.callback_query(F.data.startswith("ord:"))
 async def admin_order_action(call: CallbackQuery, bot: Bot):
-    if call.from_user.id != ADMIN_IDS:
-        await call.answer("No access", show_alert=True)
-        return
+    if call.from_user.id not in ADMIN_IDS:
+    await call.answer("No access", show_alert=True)
+    return
 
     try:
         _, action, oid = call.data.split(":")
@@ -473,10 +473,10 @@ async def admin_order_action(call: CallbackQuery, bot: Bot):
 # ---------------- ADMIN: menu + wizard + stock ----------------
 @dp.callback_query(F.data == "menu:admin")
 async def admin_entry(call: CallbackQuery, bot: Bot):
-    if call.from_user.id != ADMIN_IDS:
+    if call.from_user.id not in ADMIN_IDS:
         await call.answer("No access", show_alert=True)
-        return
-
+        return  
+   
     kb = InlineKeyboardBuilder()
 
     # Заказы
@@ -506,10 +506,9 @@ async def admin_entry(call: CallbackQuery, bot: Bot):
 
 @dp.callback_query(F.data == "admin:wizard")
 async def admin_wizard_start(call: CallbackQuery, state: FSMContext, bot: Bot):
-    if call.from_user.id != ADMIN_IDS:
-        await call.answer("No access", show_alert=True)
-        return
-    await state.clear()
+    if call.from_user.id not in ADMIN_IDS:
+    await call.answer("No access", show_alert=True)
+    return await state.clear()
     await state.set_state(AddWizard.category)
     await call.answer()
     await send_ui(
@@ -576,7 +575,7 @@ async def admin_wizard_photo(message: Message, state: FSMContext, bot: Bot):
 
 @dp.callback_query(F.data == "admin:stock")
 async def admin_stock(call: CallbackQuery, bot: Bot):
-    if call.from_user.id != ADMIN_IDS:
+    if call.from_user.id not in ADMIN_IDS:
         await call.answer("No access", show_alert=True)
         return
 
@@ -737,7 +736,7 @@ async def admin_orders(message: Message, bot: Bot):
 
 @dp.callback_query(F.data.startswith("orders:refresh:"))
 async def orders_refresh(call: CallbackQuery, bot: Bot):
-    if call.from_user.id != ADMIN_IDS:
+    if call.from_user.id not in ADMIN_IDS:
         await call.answer("No access", show_alert=True)
         return
     status = call.data.split(":")[2]
@@ -771,7 +770,7 @@ async def orders_back(call: CallbackQuery):
 
 @dp.callback_query(F.data.startswith("ord:edit:"))
 async def admin_order_edit(call: CallbackQuery, bot: Bot):
-    if call.from_user.id != ADMIN_IDS:
+    if call.from_user.id not in ADMIN_IDS:
         await call.answer("No access", show_alert=True)
         return
 
@@ -800,7 +799,7 @@ async def admin_order_edit(call: CallbackQuery, bot: Bot):
 
 @dp.callback_query(F.data.startswith("orditem:"))
 async def admin_order_item_change(call: CallbackQuery, bot: Bot):
-    if call.from_user.id != ADMIN_IDS:
+    if call.from_user.id not in ADMIN_IDS:
         await call.answer("No access", show_alert=True)
         return
 
@@ -837,7 +836,7 @@ async def admin_order_item_change(call: CallbackQuery, bot: Bot):
 
 @dp.callback_query(F.data.startswith("ord:cancel:"))
 async def admin_order_cancel(call: CallbackQuery, bot: Bot):
-    if call.from_user.id != ADMIN_IDS:
+    if call.from_user.id not in ADMIN_IDS:
         await call.answer("No access", show_alert=True)
         return
 
@@ -938,7 +937,7 @@ async def admin_orders(message: Message, bot: Bot):
 
 @dp.callback_query(F.data.startswith("orders:refresh:"))
 async def orders_refresh(call: CallbackQuery, bot: Bot):
-    if call.from_user.id != ADMIN_IDS:
+    if call.from_user.id not in ADMIN_IDS:
         await call.answer("No access", show_alert=True)
         return
     status = call.data.split(":")[2]
@@ -972,7 +971,7 @@ async def orders_back(call: CallbackQuery):
 
 @dp.callback_query(F.data.startswith("ord:edit:"))
 async def admin_order_edit(call: CallbackQuery, bot: Bot):
-    if call.from_user.id != ADMIN_IDS:
+    if call.from_user.id not in ADMIN_IDS:
         await call.answer("No access", show_alert=True)
         return
 
@@ -1001,7 +1000,7 @@ async def admin_order_edit(call: CallbackQuery, bot: Bot):
 
 @dp.callback_query(F.data.startswith("orditem:"))
 async def admin_order_item_change(call: CallbackQuery, bot: Bot):
-    if call.from_user.id != ADMIN_IDS:
+    if call.from_user.id not in ADMIN_IDS:
         await call.answer("No access", show_alert=True)
         return
 
@@ -1038,7 +1037,7 @@ async def admin_order_item_change(call: CallbackQuery, bot: Bot):
 
 @dp.callback_query(F.data.startswith("ord:cancel:"))
 async def admin_order_cancel(call: CallbackQuery, bot: Bot):
-    if call.from_user.id != ADMIN_IDS:
+    if call.from_user.id not in ADMIN_IDS:
         await call.answer("No access", show_alert=True)
         return
 
@@ -1090,7 +1089,7 @@ async def admin_products(message: Message, bot: Bot):
 
 @dp.callback_query(F.data.startswith("admcat:"))
 async def admin_cat_open(call: CallbackQuery, bot: Bot):
-    if call.from_user.id != ADMIN_IDS:
+    if call.from_user.id not in ADMIN_IDS:
         await call.answer("No access", show_alert=True)
         return
 
@@ -1139,7 +1138,7 @@ def admin_product_kb(pid: int):
 
 @dp.callback_query(F.data.startswith("prod:open:"))
 async def admin_prod_open(call: CallbackQuery, bot: Bot):
-    if call.from_user.id != ADMIN_IDS:
+    if call.from_user.id not in ADMIN_IDS:
         await call.answer("No access", show_alert=True)
         return
 
@@ -1165,7 +1164,7 @@ async def admin_prod_open(call: CallbackQuery, bot: Bot):
 
 @dp.callback_query(F.data.startswith("prod:delta:"))
 async def admin_prod_delta(call: CallbackQuery, bot: Bot):
-    if call.from_user.id != ADMIN_IDS:
+    if call.from_user.id not in ADMIN_IDS:
         await call.answer("No access", show_alert=True)
         return
 
@@ -1189,7 +1188,7 @@ async def admin_prod_delta(call: CallbackQuery, bot: Bot):
 
 @dp.callback_query(F.data.startswith("prod:setstock:"))
 async def admin_prod_setstock(call: CallbackQuery, state: FSMContext, bot: Bot):
-    if call.from_user.id != ADMIN_IDS:
+    if call.from_user.id not in ADMIN_IDS:
         await call.answer("No access", show_alert=True)
         return
     pid = int(call.data.split(":")[2])
@@ -1224,7 +1223,7 @@ async def admin_prod_setstock_value(message: Message, state: FSMContext, bot: Bo
 
 @dp.callback_query(F.data.startswith("prod:setprice:"))
 async def admin_prod_setprice(call: CallbackQuery, state: FSMContext, bot: Bot):
-    if call.from_user.id != ADMIN_IDS:
+    if call.from_user.id not in ADMIN_IDS:
         await call.answer("No access", show_alert=True)
         return
     pid = int(call.data.split(":")[2])
@@ -1261,7 +1260,7 @@ async def admin_prod_setprice_value(message: Message, state: FSMContext, bot: Bo
 
 @dp.callback_query(F.data.startswith("prod:delask:"))
 async def admin_prod_delask(call: CallbackQuery, bot: Bot):
-    if call.from_user.id != ADMIN_IDS:
+    if call.from_user.id not in ADMIN_IDS:
         await call.answer("No access", show_alert=True)
         return
 
@@ -1276,7 +1275,7 @@ async def admin_prod_delask(call: CallbackQuery, bot: Bot):
 
 @dp.callback_query(F.data.startswith("prod:delyes:"))
 async def admin_prod_delyes(call: CallbackQuery, bot: Bot):
-    if call.from_user.id != ADMIN_IDS:
+    if call.from_user.id not in ADMIN_IDS:
         await call.answer("No access", show_alert=True)
         return
 
@@ -1289,7 +1288,7 @@ async def admin_prod_delyes(call: CallbackQuery, bot: Bot):
 @dp.callback_query(F.data.startswith("admin:"))
 async def admin_router(call: CallbackQuery, bot: Bot):
     # единая точка входа для всех кнопок админки
-    if call.from_user.id != ADMIN_IDS:
+    if call.from_user.id not in ADMIN_IDS:
         await call.answer("No access", show_alert=True)
         return
 
