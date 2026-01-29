@@ -1343,6 +1343,22 @@ async def main():
     db.init_db()
     bot = Bot(BOT_TOKEN)
     asyncio.create_task(cart_expiry_worker(bot))
+
+    # --- Render keep-alive (чтобы Render видел порт и не падал) ---
+    async def handle(request):
+        return web.Response(text="OK")
+
+    app = web.Application()
+    app.router.add_get("/", handle)
+
+    runner = web.AppRunner(app)
+    await runner.setup()
+
+    port = int(os.environ.get("PORT", 10000))
+    site = web.TCPSite(runner, "0.0.0.0", port)
+    await site.start()
+    # -------------------------------------------------------------
+
     await dp.start_polling(bot)
 
 
