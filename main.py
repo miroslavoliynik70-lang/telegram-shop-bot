@@ -603,7 +603,7 @@ async def admin_stock(call: CallbackQuery, bot: Bot):
 # ---------------- CHANNEL ----------------
 @dp.message(F.text == "/setchannel")
 async def setchannel_start(message: Message):
-    if message.from_user.id != ADMIN_IDS:
+    if call.from_user.id not in ADMIN_IDS:
         return
     WAITING_CHANNEL.add(message.from_user.id)
     await message.answer("Ок! Перешли любой пост из канала @baerka_shop.")
@@ -611,7 +611,7 @@ async def setchannel_start(message: Message):
 
 @dp.message(F.forward_from_chat)
 async def catch_forwarded_from_channel(message: Message):
-    if message.from_user.id != ADMIN_IDS:
+    if call.from_user.id not in ADMIN_IDS:
         return
     if message.from_user.id not in WAITING_CHANNEL:
         return
@@ -623,7 +623,7 @@ async def catch_forwarded_from_channel(message: Message):
 
 @dp.message(F.text == "/post")
 async def post_to_channel(message: Message, bot: Bot):
-    if message.from_user.id != ADMIN_IDS:
+    if call.from_user.id not in ADMIN_IDS:
         return
     channel_id = db.get_setting("channel_id")
     if not channel_id:
@@ -677,7 +677,7 @@ async def cart_expiry_worker(bot: Bot):
 
 @dp.message(F.text.startswith("/orders"))
 async def admin_orders(message: Message, bot: Bot):
-    if message.from_user.id != ADMIN_IDS:
+    if call.from_user.id not in ADMIN_IDS:
         return
 
     parts = message.text.strip().split()
@@ -878,7 +878,7 @@ async def admin_order_cancel(call: CallbackQuery, bot: Bot):
 
 @dp.message(F.text.startswith("/orders"))
 async def admin_orders(message: Message, bot: Bot):
-    if message.from_user.id != ADMIN_IDS:
+    if call.from_user.id not in ADMIN_IDS:
         return
 
     parts = message.text.strip().split()
@@ -1081,7 +1081,7 @@ async def admin_order_cancel(call: CallbackQuery, bot: Bot):
 
 @dp.message(F.text == "/products")
 async def admin_products(message: Message, bot: Bot):
-    if message.from_user.id != ADMIN_IDS:
+    if call.from_user.id not in ADMIN_IDS:
         return
 
     cats = db.list_categories()
@@ -1210,7 +1210,7 @@ async def admin_prod_setstock(call: CallbackQuery, state: FSMContext, bot: Bot):
 
 @dp.message(ProductEdit.set_stock)
 async def admin_prod_setstock_value(message: Message, state: FSMContext, bot: Bot):
-    if message.from_user.id != ADMIN_IDS:
+    if call.from_user.id not in ADMIN_IDS:
         return
     data = await state.get_data()
     pid = int(data.get("pid"))
