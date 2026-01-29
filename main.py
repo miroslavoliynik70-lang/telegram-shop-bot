@@ -1357,9 +1357,11 @@ async def admin_router(call: CallbackQuery, bot: Bot):
 async def main():
     db.init_db()
     bot = Bot(BOT_TOKEN)
+
+    # фоновые задачи
     asyncio.create_task(cart_expiry_worker(bot))
 
-    # --- Render keep-alive (чтобы Render видел порт и не падал) ---
+    # --- Render keep-alive (чтобы Render видел порт) ---
     async def handle(request):
         return web.Response(text="OK")
 
@@ -1372,7 +1374,11 @@ async def main():
     port = int(os.environ.get("PORT", 10000))
     site = web.TCPSite(runner, "0.0.0.0", port)
     await site.start()
-    # ------------------------------------------------------------
+    # --------------------------------------------------
+
+    # ВАЖНО: выключаем webhook (чтобы не было 409) и запускаем бота
+    await bot.delete_webhook(drop_pending_updates=True)
+    await dp.start_polling(bot)
 
 
 if __name__ == "__main__":
