@@ -62,19 +62,7 @@ from aiogram.webhook.aiohttp_server import SimpleRequestHandler, setup_applicati
 WEBHOOK_PATH = "/webhook"
 WEBHOOK_URL = None  # установим в main()
 
-async def main():
-    bot = Bot(BOT_TOKEN)
-    dp = Dispatcher()
 
-    # запускаем web server (Render)
-    await run_web(bot, dp)
-
-    # выключаем webhook и включаем polling
-    await bot.delete_webhook(drop_pending_updates=True)
-    await dp.start_polling(bot)
-
-if __name__ == "__main__":
-    asyncio.run(main())
 
 def currency_symbol(code: str) -> str:
     code = (code or "").upper()
